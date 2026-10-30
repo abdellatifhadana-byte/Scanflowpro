@@ -235,8 +235,8 @@ const Results = () => {
               code: p.code,
               output_name: p.output_name || 'DEFAULT',
               source_file: p.source_file,
-              is_main: p.is_main ?? true,
-              is_child: p.is_child ?? false,
+              is_main: p.is_main || true,
+              is_child: p.is_child || false,
               original_file_path: p.original_file_path,
               original_page_number: p.original_page_number || 0
             })),

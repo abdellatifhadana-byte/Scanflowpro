@@ -18,11 +18,8 @@ class FileSettings(BaseModel):
     output_name: str  # الاسم النهائي للإخراج
     has_child_pages: bool = True
     document_type: str = "printed"  # printed, handwritten, mixed
-    keyword: Optional[str] = None
-    child_pages_mode: str = "auto"  # auto, manual, none
-    child_pages_count: int = 0
-    roi_areas: List[ROIArea] = Field(default_factory=list)
-    merge_with_files: List[str] = Field(default_factory=list)  # أسماء الملفات للتجميع
+    roi_areas: List[ROIArea] = []
+    merge_with_files: List[str] = []  # أسماء الملفات للتجميع
 
 class PageResult(BaseModel):
     """نتيجة صفحة واحدة"""
@@ -57,7 +54,7 @@ class SessionCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     batch_name: str
     turbo_mode: bool = False
-    file_settings: List[FileSettings] = Field(default_factory=list)
+    file_settings: List[FileSettings] = []
 
 class SessionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")

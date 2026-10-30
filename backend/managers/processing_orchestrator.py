@@ -146,9 +146,7 @@ class ProcessingOrchestrator:
                         'stage': 'processing',
                         'page': page['page_number'],
                         'file': page['source_file'],
-                        'progress': 20 + (idx / total_pages) * 60,
-                        'total_pages': total_pages,
-                        'processed_pages': idx
+                        'progress': 20 + (idx / total_pages) * 60
                     })
                 
                 processed_page = await self._process_single_page(page, session_path)

@@ -51,8 +51,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Models
-# SessionCreate is imported from models.py. Keeping a second local definition here
-# previously shadowed that model and silently discarded the frontend file_settings.
+class SessionCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    batch_name: str
+    document_type: str = "printed"  # printed, handwritten, mixed
+    turbo_mode: bool = False
+    child_pages_mode: str = "auto"  # auto, manual, none
+    
 class SessionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     session_id: str
@@ -299,9 +304,7 @@ async def process_session_files(session_id: str, session: dict):
                 # تحديث تقدم الجلسة
                 await session_manager.update_session(session_id, {
                     'progress': data.get('progress', 0),
-                    'current_stage': data.get('stage', 'processing'),
-                    'total_pages': data.get('total_pages'),
-                    'processed_pages': data.get('processed_pages')
+                    'current_stage': data.get('stage', 'processing')
                 })
                 
                 # إرسال التحديثات عبر WebSocket
@@ -334,10 +337,6 @@ async def process_session_files(session_id: str, session: dict):
                 'code_groups': results['code_groups'],
                 'report': report,
                 'progress': 100,
-                'current_stage': 'completed',
-                'total_pages': results['total_pages'],
-                'processed_pages': results['total_pages'],
-                'total_codes': results['total_codes'],
                 'completed_at': datetime.now(timezone.utc).isoformat()
             })
             
@@ -390,22 +389,12 @@ async def get_session_status(session_id: str):
         if not session:
             return {"error": "الجلسة غير موجودة"}
         
-        pages = session.get('pages', []) or []
-        code_groups = session.get('code_groups', []) or []
-        progress = session.get('progress', 0) or 0
         return {
             'session_id': session_id,
             'status': session.get('status'),
-            'progress': progress,
-            'current_stage': session.get('current_stage', 'completed' if session.get('status') == 'completed' else 'processing'),
-            'stats': {
-                'total': session.get('total_pages') or len(pages),
-                'processed': session.get('processed_pages') or (len(pages) if session.get('status') == 'completed' else 0),
-                'codes': session.get('total_codes') or len(code_groups)
-            },
+            'progress': session.get('progress', 0),
             'results': session.get('results', []),
-            'report': session.get('report', {}),
-            'error': session.get('error')
+            'report': session.get('report', {})
         }
     except Exception as e:
         logger.error(f"خطأ في الحصول على الحالة: {e}")
