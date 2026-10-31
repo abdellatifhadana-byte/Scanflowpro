@@ -1,4 +1,3 @@
-from paddleocr import PaddleOCR
 from PIL import Image
 import numpy as np
 import logging
@@ -12,6 +11,10 @@ class HTREngine:
 
     def __init__(self, lang: str = "en"):
         try:
+            # Import lazily so a missing native OCR dependency cannot prevent
+            # the FastAPI application from importing and starting.
+            from paddleocr import PaddleOCR
+
             self.ocr = PaddleOCR(use_angle_cls=True, lang=lang)
             logger.info("✓ PaddleOCR initialized successfully")
         except Exception as e:
