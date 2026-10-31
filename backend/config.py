@@ -4,6 +4,7 @@ Tous les paramètres et constantes du système avec focus DAM
 """
 
 import os
+import shutil
 from pathlib import Path
 
 # ================================
@@ -78,10 +79,15 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 # ================================
 # 🔥 Tesseract OCR (DAM Optimized)
 # ================================
-TESSERACT_CMD = os.getenv(
-    "TESSERACT_CMD",
-    r"C:\ProgramData\Tesseract-OCR\tesseract.exe"
+_DEFAULT_TESSERACT_CMD = (
+    shutil.which("tesseract")
+    or (
+        r"C:\ProgramData\Tesseract-OCR\tesseract.exe"
+        if os.name == "nt"
+        else "/usr/bin/tesseract"
+    )
 )
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", _DEFAULT_TESSERACT_CMD)
 
 # Langues OCR (Arabe prioritaire pour DAM)
 TESSERACT_LANGUAGES = "ara+fra+eng"
