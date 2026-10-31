@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any
 from datetime import datetime, timezone
 import shutil
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,21 @@ class JSONSessionManager:
         """Obtenir le chemin du fichier de session"""
         return self.storage_dir / f"{session_id}.json"
     
+    def get_session_path(self, session_id: str, subdir: str = None) -> Path:
+        """Return a session directory, optionally creating a child directory."""
+        if not session_id or Path(session_id).name != session_id or session_id in (".", ".."):
+            raise ValueError("Invalid session_id")
+        session_dir = self.storage_dir / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        if subdir:
+            if Path(subdir).name != subdir or subdir in (".", ".."):
+                raise ValueError("Invalid session subdirectory")
+            target = session_dir / subdir
+            target.mkdir(parents=True, exist_ok=True)
+            return target
+        return session_dir
+
+
     async def create_session(self, session_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Créer une nouvelle session
@@ -49,10 +65,15 @@ class JSONSessionManager:
             Session créée avec métadonnées
         """
         try:
-            session_id = session_data.get("session_id")
-            if not session_id:
-                raise ValueError("session_id requis")
-            
+            session_id = session_data.get("session_id") or str(uuid.uuid4())
+            session_data["session_id"] = session_id
+
+            # Créer le répertoire de session et les dossiers utilisés par l'API
+            session_dir = self.storage_dir / session_id
+            session_dir.mkdir(parents=True, exist_ok=True)
+            for dirname in ("uploads", "processed", "results", "roi_images"):
+                (session_dir / dirname).mkdir(exist_ok=True)
+
             # Ajouter métadonnées
             session_data["created_at"] = datetime.now(timezone.utc).isoformat()
             session_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -60,7 +81,7 @@ class JSONSessionManager:
             session_data["version"] = "7.0.0"
             
             # Sauvegarder
-            session_path = self._get_session_path(session_id)
+            session_path = session_dir / "session.json"
             with open(session_path, 'w', encoding='utf-8') as f:
                 json.dump(session_data, f, indent=2, ensure_ascii=False)
             
@@ -82,7 +103,10 @@ class JSONSessionManager:
             Données de la session ou None
         """
         try:
-            session_path = self._get_session_path(session_id)
+            session_path = self.get_session_path(session_id) / "session.json"
+            legacy_path = self._get_session_path(session_id)
+            if not session_path.exists() and legacy_path.exists():
+                session_path = legacy_path
             
             if not session_path.exists():
                 logger.warning(f"Session non trouvée: {session_id}")
@@ -119,7 +143,7 @@ class JSONSessionManager:
             session["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Sauvegarder
-            session_path = self._get_session_path(session_id)
+            session_path = self.get_session_path(session_id) / "session.json"
             with open(session_path, 'w', encoding='utf-8') as f:
                 json.dump(session, f, indent=2, ensure_ascii=False)
             
@@ -142,9 +166,15 @@ class JSONSessionManager:
         """
         try:
             session_path = self._get_session_path(session_id)
-            
+            session_dir = self.get_session_path(session_id)
+            deleted = False
             if session_path.exists():
                 session_path.unlink()
+                deleted = True
+            if session_dir.exists():
+                shutil.rmtree(session_dir)
+                deleted = True
+            if deleted:
                 logger.info(f"✓ Session supprimée: {session_id}")
                 return True
             else:
@@ -168,7 +198,7 @@ class JSONSessionManager:
         try:
             sessions = []
             
-            for session_file in self.storage_dir.glob("*.json"):
+            for session_file in list(self.storage_dir.glob("*.json")) + list(self.storage_dir.glob("*/session.json")):
                 try:
                     with open(session_file, 'r', encoding='utf-8') as f:
                         session = json.load(f)

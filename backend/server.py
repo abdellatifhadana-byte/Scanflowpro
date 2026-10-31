@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -25,11 +24,6 @@ from models import (
 # إعداد
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
 
 # إنشاء FastAPI app
 app = FastAPI(title="ScanFlow Pro V7")
@@ -906,9 +900,6 @@ app.add_middleware(
 # Serve static files (للنتائج)
 app.mount("/results", StaticFiles(directory="/app/backend/sessions"), name="results")
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
 
 if __name__ == "__main__":
     import uvicorn
